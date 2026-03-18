@@ -1,5 +1,7 @@
 package org.example.userauthservice_feb2026.services;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.MacAlgorithm;
 import org.antlr.v4.runtime.misc.Pair;
@@ -35,6 +37,9 @@ public class AuthService implements IAuthService {
 
     @Autowired
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+
+    @Autowired
+    private SecretKey secretKey;
 
     @Override
     public User signup(String name, String email, String password, String phoneNumber) {
@@ -94,8 +99,9 @@ public class AuthService implements IAuthService {
         claims.put("iat",currentTime);
         claims.put("exp",currentTime+100000);
 
-        MacAlgorithm algorithm = Jwts.SIG.HS256;
-        SecretKey secretKey = algorithm.key().build();
+        //        check SecurityConfig, we created bean of secretkey to use same secretkey in validateToken method
+//        MacAlgorithm algorithm = Jwts.SIG.HS256;
+//        SecretKey secretKey = algorithm.key().build();
 
         String token = Jwts.builder().claims(claims).signWith(secretKey).compact();
 
@@ -108,5 +114,31 @@ public class AuthService implements IAuthService {
         userSessionRepo.save(userSession);
 
         return new Pair<>(user,token);
+    }
+
+
+    // This logic should be sitting in resources server
+    public Boolean validateToken(String token) {
+        Optional<UserSession> optional = userSessionRepo.findByToken(token);
+
+        if(optional.isEmpty()) return false;
+
+        UserSession session = optional.get();
+
+
+        JwtParser jwtParser = Jwts.parser().verifyWith(secretKey).build();
+        Claims claims = jwtParser.parseSignedClaims(token).getPayload();
+        Long expiry = (Long)claims.get("exp");
+        Long currentTime = System.currentTimeMillis();
+
+
+        if(currentTime > expiry) {
+            session.setStatus(Status.DELETED);
+            session.setLastUpdatedAt(new Date());
+            userSessionRepo.save(session);
+            return  false;
+        }
+
+        return true;
     }
 }
