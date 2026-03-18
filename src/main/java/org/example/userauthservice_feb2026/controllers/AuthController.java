@@ -1,5 +1,6 @@
 package org.example.userauthservice_feb2026.controllers;
 
+import org.antlr.v4.runtime.misc.Pair;
 import org.example.userauthservice_feb2026.dtos.LoginRequestDto;
 import org.example.userauthservice_feb2026.dtos.RoleDto;
 import org.example.userauthservice_feb2026.dtos.SignupRequestDto;
@@ -8,6 +9,11 @@ import org.example.userauthservice_feb2026.models.Role;
 import org.example.userauthservice_feb2026.models.User;
 import org.example.userauthservice_feb2026.services.IAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,9 +39,16 @@ public class AuthController {
     //login
     //UserDto is going to change after jwt generation
     @PostMapping("/login")
-    public UserDto login(@RequestBody LoginRequestDto loginRequestDto) {
-       User user = authService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
-       return from(user);
+    public ResponseEntity<UserDto> login(@RequestBody LoginRequestDto loginRequestDto) {
+        Pair<User,String> response = authService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
+        User user = response.a;
+        String token = response.b;
+
+        MultiValueMap<String,String> headers = new LinkedMultiValueMap<>();
+        headers.add(HttpHeaders.SET_COOKIE,token);
+        headers.add("Generated-By","Anurag Khanna");
+
+       return new ResponseEntity<>(from(user),headers, HttpStatus.OK);
     }
 
     private UserDto from(User user) {
