@@ -62,7 +62,7 @@ public class AuthController {
             roleDto.setValue(role.getValue());
             roleDtoList.add(roleDto);
         }
-        userDto.setRoles(roleDtoList);
+       // userDto.setRoles(roleDtoList);
         return userDto;
     }
 }
